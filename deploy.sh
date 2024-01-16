@@ -1,13 +1,11 @@
 #!/bin/bash
 
 SSH_KEY_LOCATION="/home/web/.ssh/id_ed25519"
-
 WEB_SERVER_DIR="/home/web/classifAI/"
-
-BRANCH_NAME="main" # I left this open in case we wanted a release branch etc.
-
+BRANCH_NAME="main"
 FORCE_DEPLOY=false
 
+# Parse options
 while getopts "f" opt; do
 	case $opt in
 		f) FORCE_DEPLOY=true ;;
@@ -15,40 +13,45 @@ while getopts "f" opt; do
 	esac
 done
 
+# Start the SSH agent and add the SSH key
+eval "$(ssh-agent -s)"
+ssh-add "$SSH_KEY_LOCATION"
+
 update_repo() {
-	eval "$(ssh-agent -s)" #Start the SSH agent
-	ssh-add "$SSH_KEY_LOCATION"
 	git pull origin "$BRANCH_NAME"
 }
 
 check_changes() {
-	eval "$(ssh-agent -s)" #Start the SSH agent
-	ssh-add "$SSH_KEY_LOCATION"
-
-	if git fetch --dry-run origin; then
+	# Fetch the latest changes from the remote without merging them
+	git fetch origin "$BRANCH_NAME"
+	
+	# Check if there are changes by comparing the HEADs
+	local LOCAL_HEAD=$(git rev-parse HEAD)
+	local REMOTE_HEAD=$(git rev-parse "origin/$BRANCH_NAME")
+	
+	if [ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]; then
 		echo "Found changes in remote."
 		update_repo
 		return 0
 	else
-		return 1 # No changes detected
+		echo "No changes detected."
+		return 1
 	fi
 }
 
 restart_server() {
-	echo "RESTART BABY"
+	echo "Restarting server..."
 	source /home/web/build_frontend.sh "$BRANCH_NAME" "$WEB_SERVER_DIR"
 }
 
-echo $(date)
-
+echo "$(date)"
 cd "$WEB_SERVER_DIR" || exit 1
 
-
 if check_changes || $FORCE_DEPLOY; then
-	echo "Restarting Server"
 	restart_server
 else
-	echo "Not restarting server"
+	echo "Not restarting server."
 fi
 
-
+# Kill the SSH agent
+eval "$(ssh-agent -k)"
