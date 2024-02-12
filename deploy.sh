@@ -42,6 +42,8 @@ check_changes() {
 restart_server() {
 	echo "Restarting server..."
 	source /home/web/update-scripts/build_frontend.sh "$BRANCH_NAME" "$WEB_SERVER_DIR"
+	source /home/web/update-scripts/build_mongo.sh
+	source /home/web/update-scripts/build_backend.sh
 }
 
 echo "$(date)"
