@@ -2,4 +2,5 @@
 
 cd /home/web/classifAI/resources # area with dockerfile and docker-compose for mongo
 
-docker-compose up -d
+docker-compose up 
+
